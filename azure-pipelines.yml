@@ -1,0 +1,140 @@
+
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - employees/*
+      - generate_report.py
+      - test_app.py
+      - requirements.txt
+
+variables:
+  pythonVersion:        '3.10'
+  appServiceName:       '$(APP_SERVICE_NAME)'
+  azureSubscription:    '$(AZURE_SERVICE_CONNECTION)'
+
+stages:
+
+# ────────────────────────────────────────────
+#  STAGE 1 — BUILD & TEST
+# ────────────────────────────────────────────
+- stage: Build
+  displayName: 'Stage 1 - Build and Test'
+  jobs:
+  - job: BuildJob
+    displayName: 'Install, Test, and Package'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    steps:
+
+    # 1. Set Python version
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+
+    # 2. Install dependencies
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      displayName: 'Install dependencies from requirements.txt'
+
+    # 3. Run pytest and export results
+    - script: |
+        mkdir -p reports
+        pytest test_app.py \
+          --junitxml=test-results/results.xml \
+          --tb=short \
+          -v
+      displayName: 'Run pytest unit tests'
+
+    # 4. Publish test results (visible in Pipeline UI)
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles:  'test-results/results.xml'
+        failTaskOnFailedTests: true
+      condition: always()
+
+    # 5. Generate reports for any employee files in repo
+    - script: |
+        mkdir -p reports
+        if ls employees/*.json 1>/dev/null 2>&1; then
+          for file in employees/*.json; do
+            echo "Processing $file"
+            python generate_report.py "$file"
+          done
+        else
+          echo "No employee JSON files found — skipping report generation"
+        fi
+      displayName: 'Generate onboarding PDF reports'
+
+    # 6. Zip entire app for deployment
+    - task: ArchiveFiles@2
+      displayName: 'Zip application for deployment'
+      inputs:
+        rootFolderOrFile:     '$(System.DefaultWorkingDirectory)'
+        includeRootFolder:    false
+        archiveType:          'zip'
+        archiveFile:          '$(Build.ArtifactStagingDirectory)/onboarding-app.zip'
+        replaceExistingArchive: true
+
+    # 7. Publish zip as pipeline artifact
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish build artifact'
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/onboarding-app.zip'
+        artifact:   'drop'
+
+    # 8. Also publish generated PDF reports as a separate artifact
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish onboarding PDF reports'
+      inputs:
+        targetPath: 'reports'
+        artifact:   'onboarding-reports'
+      condition: succeededOrFailed()
+
+# ────────────────────────────────────────────
+#  STAGE 2 — DEPLOY (with manual approval gate)
+# ────────────────────────────────────────────
+- stage: Deploy
+  displayName: 'Stage 2 - Deploy to Azure App Service'
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - deployment: DeployJob
+    displayName: 'Deploy Flask App to App Service'
+    pool:
+      vmImage: 'ubuntu-latest'
+
+    # ← This environment has the approval gate configured in Azure DevOps UI
+    #   Go to: Pipelines → Environments → production → Approvals and checks
+    environment: 'production'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          # 1. Download the zipped artifact from Build stage
+          - download: current
+            artifact: drop
+            displayName: 'Download build artifact'
+
+          # 2. Deploy to Azure App Service
+          - task: AzureWebApp@1
+            displayName: 'Deploy to Azure App Service'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType:           'webAppLinux'
+              appName:           '$(appServiceName)'
+              package:           '$(Pipeline.Workspace)/drop/onboarding-app.zip'
+              runtimeStack:      'PYTHON|3.10'
+              startUpCommand:    'gunicorn --bind=0.0.0.0:8000 generate_report:app'
