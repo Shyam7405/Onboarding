@@ -1,0 +1,1 @@
+web: gunicorn generate_report:app
