@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -325,7 +325,8 @@ def load_employee_json(filepath):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
 
 @app.route("/onboard", methods=["POST"])
