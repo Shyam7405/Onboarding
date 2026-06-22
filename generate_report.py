@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import smtplib
+import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -19,10 +20,10 @@ from reportlab.lib.enums import TA_CENTER
 app = Flask(__name__)
 CORS(app)
 
-# ── GMAIL CREDENTIALS (set these as environment variables on Render) ──
+# ── GMAIL CREDENTIALS (set as environment variables on Render) ──
 GMAIL_ADDRESS  = os.environ.get("GMAIL_ADDRESS", "your.email@gmail.com")
 GMAIL_APP_PASS = os.environ.get("GMAIL_APP_PASS", "abcd efgh ijkl mnop")
-# ─────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────
 
 
 def generate_pdf(employee_data, output_path):
@@ -66,7 +67,6 @@ def generate_pdf(employee_data, output_path):
 
     story = []
 
-    # Header
     story.append(Spacer(1, 0.1*inch))
     story.append(Paragraph("Welcome to the Team!", title_style))
     story.append(Paragraph("Employee Onboarding Summary Report", sub_style))
@@ -74,7 +74,6 @@ def generate_pdf(employee_data, output_path):
     story.append(HRFlowable(width="100%", thickness=3, color=colors.HexColor("#1F4E79")))
     story.append(Spacer(1, 0.2*inch))
 
-    # Employee Details
     story.append(Paragraph("Employee Information", section_style))
     detail_data = [
         ["Full Name",     name],
@@ -105,7 +104,6 @@ def generate_pdf(employee_data, output_path):
     story.append(detail_table)
     story.append(Spacer(1, 0.2*inch))
 
-    # Welcome Message
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("Welcome Message", section_style))
     story.append(Paragraph(f"Dear {name},", body_style))
@@ -113,7 +111,7 @@ def generate_pdf(employee_data, output_path):
     story.append(Paragraph(
         f"We are absolutely thrilled to welcome you to the <b>{department}</b> team "
         f"as our new <b>{role}</b>. You are joining at an exciting time and we "
-        f"can't wait to see the amazing contributions you will make. Your reporting "
+        f"cannot wait to see the amazing contributions you will make. Your reporting "
         f"manager <b>{manager}</b> will be in touch shortly to schedule your "
         f"first-week orientation and introductions.", body_style))
     if note:
@@ -121,7 +119,6 @@ def generate_pdf(employee_data, output_path):
         story.append(Paragraph(f'Personal note from HR: "{note}"', note_style))
     story.append(Spacer(1, 0.2*inch))
 
-    # Checklist
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("First Week Checklist", section_style))
     for item in [
@@ -139,16 +136,15 @@ def generate_pdf(employee_data, output_path):
         story.append(Paragraph(f"  [ ]   {item}", check_style))
     story.append(Spacer(1, 0.2*inch))
 
-    # Key Contacts
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("Key Contacts", section_style))
     contacts_table = Table([
-        ["Team",          "Contact",              "For What"],
-        ["HR Team",       "hr@company.com",       "Documents, payroll, benefits"],
-        ["IT Support",    "it@company.com",       "Laptop, software, system access"],
-        ["Your Manager",  manager,                "Day-to-day guidance and support"],
-        ["Office Admin",  "admin@company.com",    "Desk, ID card, facilities"],
-        ["Finance",       "finance@company.com",  "Salary, reimbursements"],
+        ["Team",         "Contact",             "For What"],
+        ["HR Team",      "hr@company.com",      "Documents, payroll, benefits"],
+        ["IT Support",   "it@company.com",      "Laptop, software, system access"],
+        ["Your Manager", manager,               "Day-to-day guidance and support"],
+        ["Office Admin", "admin@company.com",   "Desk, ID card, facilities"],
+        ["Finance",      "finance@company.com", "Salary, reimbursements"],
     ], colWidths=[1.8*inch, 2.2*inch, 2.5*inch])
     contacts_table.setStyle(TableStyle([
         ("BACKGROUND",     (0,0),(-1,0), colors.HexColor("#1F4E79")),
@@ -164,7 +160,6 @@ def generate_pdf(employee_data, output_path):
     story.append(contacts_table)
     story.append(Spacer(1, 0.2*inch))
 
-    # Policies
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("Important Policies to Review", section_style))
     for policy in [
@@ -179,7 +174,6 @@ def generate_pdf(employee_data, output_path):
         story.append(Spacer(1, 0.03*inch))
     story.append(Spacer(1, 0.25*inch))
 
-    # Footer
     story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor("#1F4E79")))
     story.append(Spacer(1, 0.1*inch))
     story.append(Paragraph(
@@ -241,11 +235,11 @@ def send_email(to_email, employee_data, pdf_path):
     <p style="font-size:15px;color:#555;line-height:1.8;">
       We are thrilled to welcome you to the <b style="color:#1F4E79">{department}</b> team
       as our new <b style="color:#1F4E79">{role}</b>. You are joining at an exciting time
-      and we can't wait to see the contributions you will make.
+      and we cannot wait to see the contributions you will make.
     </p>
-    {"<div style='font-size:14px;color:#1F4E79;font-style:italic;background:#EEF4FB;padding:14px 18px;border-left:4px solid #2E75B6;border-radius:0 8px 8px 0;margin-bottom:16px;'>" + note + "</div>" if note else ""}
+    {"<div style='font-size:14px;color:#1F4E79;font-style:italic;background:#EEF4FB;padding:14px 18px;border-left:4px solid #2E75B6;border-radius:0 8px 8px 0;margin:16px 0;'>" + note + "</div>" if note else ""}
     <div style="background:#F8FAFC;border-radius:10px;padding:22px 26px;margin:20px 0;border:1px solid #E0E8F0;">
-      <h3 style="color:#1F4E79;margin:0 0 16px;font-size:15px;">📋 Your Onboarding Details</h3>
+      <h3 style="color:#1F4E79;margin:0 0 16px;font-size:15px;">Your Onboarding Details</h3>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         <tr style="border-bottom:1px solid #EEE;"><td style="padding:10px 0;color:#888;width:38%;">Full Name</td><td style="color:#333;font-weight:700;">{name}</td></tr>
         <tr style="border-bottom:1px solid #EEE;"><td style="padding:10px 0;color:#888;">Role</td><td style="color:#333;font-weight:700;">{role}</td></tr>
@@ -256,7 +250,7 @@ def send_email(to_email, employee_data, pdf_path):
         <tr><td style="padding:10px 0;color:#888;">Employee ID</td><td style="color:#333;font-weight:700;">{emp_id}</td></tr>
       </table>
     </div>
-    <h3 style="color:#1F4E79;font-size:15px;margin:24px 0 14px;">✅ Your First Week Checklist</h3>
+    <h3 style="color:#1F4E79;font-size:15px;margin:24px 0 14px;">Your First Week Checklist</h3>
     <table style="width:100%;font-size:14px;color:#555;border-collapse:collapse;">
       <tr><td style="padding:9px 0;border-bottom:1px solid #F5F5F5;">✅&nbsp;&nbsp;Complete ID and access card setup with HR</td></tr>
       <tr><td style="padding:9px 0;border-bottom:1px solid #F5F5F5;">✅&nbsp;&nbsp;Attend company orientation session on Day 1</td></tr>
@@ -267,7 +261,7 @@ def send_email(to_email, employee_data, pdf_path):
       <tr><td style="padding:9px 0;border-bottom:1px solid #F5F5F5;">✅&nbsp;&nbsp;Join department meeting and introduce yourself</td></tr>
       <tr><td style="padding:9px 0;">✅&nbsp;&nbsp;Complete mandatory compliance and security training</td></tr>
     </table>
-    <h3 style="color:#1F4E79;font-size:15px;margin:24px 0 14px;">📞 Key Contacts</h3>
+    <h3 style="color:#1F4E79;font-size:15px;margin:24px 0 14px;">Key Contacts</h3>
     <table style="width:100%;font-size:13px;border-collapse:collapse;">
       <tr style="background:#1F4E79;">
         <td style="padding:10px 12px;color:white;font-weight:700;">Team</td>
@@ -280,8 +274,8 @@ def send_email(to_email, employee_data, pdf_path):
       <tr><td style="padding:9px 12px;color:#555;">Finance</td><td style="padding:9px 12px;color:#2E75B6;">finance@company.com</td><td style="padding:9px 12px;color:#555;">Salary, expenses</td></tr>
     </table>
     <div style="background:#1F4E79;border-radius:10px;padding:22px 26px;margin:28px 0;text-align:center;">
-      <p style="color:#B3D1F0;margin:0 0 8px;font-size:13px;">📎 Your personalised onboarding report is attached</p>
-      <p style="color:white;margin:0;font-size:15px;font-weight:700;">Open the PDF for your complete onboarding summary</p>
+      <p style="color:#B3D1F0;margin:0 0 8px;font-size:13px;">Your personalised onboarding report is attached as a PDF</p>
+      <p style="color:white;margin:0;font-size:15px;font-weight:700;">Open the attachment for your complete onboarding summary</p>
     </div>
     <p style="font-size:15px;color:#555;line-height:1.8;">
       If you have any questions before your start date, reach out to
@@ -340,17 +334,29 @@ def onboard():
 
     safe_name = data["name"].replace(" ", "_")
     pdf_path  = os.path.join("reports", f"onboarding_{safe_name}.pdf")
-    generate_pdf(data, pdf_path)
 
     try:
-        send_email(data["email"], data, pdf_path)
-        return jsonify({
-            "success": True,
-            "message": f"Onboarding email sent to {data['email']}!",
-            "report":  f"onboarding_{safe_name}.pdf"
-        }), 200
+        generate_pdf(data, pdf_path)
     except Exception as e:
-        return jsonify({"error": f"PDF generated but email failed: {str(e)}"}), 500
+        return jsonify({"error": f"PDF generation failed: {str(e)}"}), 500
+
+    # Send email in background so worker doesn't timeout
+    def send_in_background():
+        try:
+            send_email(data["email"], data, pdf_path)
+            print(f"Email sent to {data['email']}")
+        except Exception as e:
+            print(f"Email error: {e}")
+
+    thread = threading.Thread(target=send_in_background)
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({
+        "success": True,
+        "message": f"Onboarding email sent to {data['email']}!",
+        "report":  f"onboarding_{safe_name}.pdf"
+    }), 200
 
 
 @app.route("/report/<filename>")
