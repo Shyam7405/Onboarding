@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Employee Onboarding Portal</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,8 +22,8 @@
       color: white;
     }
     .header-icon { font-size: 52px; margin-bottom: 12px; }
-    .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
-    .header p  { font-size: 14px; color: #B3D1F0; }
+    .header h1  { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+    .header p   { font-size: 14px; color: #B3D1F0; }
     .header-badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
     .hbadge { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
       color: #D4E8F8; font-size: 12px; padding: 4px 12px; border-radius: 20px; }
@@ -33,21 +34,31 @@
     .stat-num { font-size: 22px; font-weight: 700; color: white; }
     .stat-lbl { font-size: 11px; color: #7AAED4; margin-top: 2px; }
 
-    .body { background: white; padding: 32px 40px; border-radius: 0 0 16px 16px;
-      box-shadow: 0 8px 32px rgba(31,78,121,0.12); }
+    .body {
+      background: white;
+      padding: 32px 40px;
+      border-radius: 0 0 16px 16px;
+      box-shadow: 0 8px 32px rgba(31,78,121,0.12);
+    }
 
     .section { margin-bottom: 28px; }
-    .section-header { display: flex; align-items: center; gap: 10px;
-      padding-bottom: 10px; border-bottom: 2px solid #EEF4FB; margin-bottom: 18px; }
-    .section-icon { width: 32px; height: 32px; border-radius: 8px; background: #EEF4FB;
-      display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      padding-bottom: 10px; border-bottom: 2px solid #EEF4FB; margin-bottom: 18px;
+    }
+    .section-icon {
+      width: 32px; height: 32px; border-radius: 8px; background: #EEF4FB;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
     .section-title { font-size: 15px; font-weight: 700; color: #1F4E79; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .grid-1 { display: grid; grid-template-columns: 1fr; gap: 16px; }
 
-    .field label { display: block; font-size: 11px; font-weight: 700;
-      color: #888; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+    .field { margin-bottom: 4px; }
+    .field label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: #888; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;
+    }
     .field input, .field select {
       width: 100%; padding: 11px 14px;
       border: 1.5px solid #E0E8F0; border-radius: 8px;
@@ -55,33 +66,35 @@
       transition: border 0.2s, box-shadow 0.2s; background: #FAFCFE;
     }
     .field input:focus, .field select:focus {
-      border-color: #2E75B6; box-shadow: 0 0 0 3px rgba(46,117,182,0.1);
+      border-color: #2E75B6;
+      box-shadow: 0 0 0 3px rgba(46,117,182,0.1);
       background: white;
     }
     .field input::placeholder { color: #BBC8D4; }
 
-    .dept-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+    .dept-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
     .dept-btn {
       padding: 8px 16px; border: 1.5px solid #E0E8F0; border-radius: 8px;
       background: #FAFCFE; color: #666; font-size: 13px; cursor: pointer;
       transition: all 0.15s; font-weight: 500;
     }
     .dept-btn:hover { border-color: #2E75B6; color: #2E75B6; background: #EEF4FB; }
-    .dept-btn.sel { background: #1F4E79; border-color: #1F4E79; color: white; }
+    .dept-btn.sel  { background: #1F4E79; border-color: #1F4E79; color: white; }
 
-    .priority-grid { display: flex; gap: 8px; }
-    .priority-btn { flex: 1; padding: 10px 8px; border: 1.5px solid #E0E8F0;
+    .priority-grid { display: flex; gap: 8px; margin-top: 6px; }
+    .priority-btn {
+      flex: 1; padding: 10px 8px; border: 1.5px solid #E0E8F0;
       border-radius: 8px; background: #FAFCFE; color: #666; font-size: 13px;
-      cursor: pointer; transition: all 0.15s; text-align: center; font-weight: 500; }
-    .priority-btn:hover { border-color: #2E75B6; }
-    .priority-btn.sel-low  { background: #E7F9EF; border-color: #1A7F1A; color: #1A5C1A; }
+      cursor: pointer; transition: all 0.15s; text-align: center; font-weight: 500;
+    }
+    .priority-btn.sel-low  { background: #E7FFE7; border-color: #1A7F1A; color: #1A5C1A; }
     .priority-btn.sel-mid  { background: #FFF8E7; border-color: #B8860B; color: #7A5A00; }
     .priority-btn.sel-high { background: #FFE7E7; border-color: #C00000; color: #8B0000; }
 
     .preview-box {
       background: #EEF4FB; border-radius: 10px; padding: 14px 18px;
       border-left: 4px solid #2E75B6; font-size: 13px; color: #1F4E79;
-      line-height: 1.7; display: none; margin-top: 8px;
+      line-height: 1.7; display: none; margin-top: 12px;
     }
 
     .send-btn {
@@ -90,20 +103,26 @@
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       gap: 10px; transition: all 0.2s; letter-spacing: 0.3px; margin-top: 4px;
     }
-    .send-btn:hover:not(:disabled) { background: #163D61; transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(31,78,121,0.25); }
+    .send-btn:hover:not(:disabled) {
+      background: #163D61; transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(31,78,121,0.25);
+    }
     .send-btn:active:not(:disabled) { transform: translateY(0); }
     .send-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
     .progress { display: none; margin: 16px 0; }
     .progress-steps { display: flex; }
-    .pstep { flex: 1; text-align: center; padding: 10px 4px; font-size: 12px;
-      color: #AAA; border-bottom: 3px solid #E0E8F0; transition: all 0.3s; }
+    .pstep {
+      flex: 1; text-align: center; padding: 10px 4px; font-size: 12px;
+      color: #AAA; border-bottom: 3px solid #E0E8F0; transition: all 0.3s;
+    }
     .pstep.active { color: #2E75B6; border-color: #2E75B6; font-weight: 700; }
     .pstep.done   { color: #1A7F1A; border-color: #1A7F1A; }
 
-    .result { border-radius: 10px; padding: 16px 20px; font-size: 14px;
-      line-height: 1.7; display: none; margin-top: 16px; }
+    .result {
+      border-radius: 10px; padding: 16px 20px; font-size: 14px;
+      line-height: 1.7; display: none; margin-top: 16px;
+    }
     .result.success { background: #E7FFE7; border: 1.5px solid #1A7F1A; color: #1A5C1A; }
     .result.error   { background: #FFE7E7; border: 1.5px solid #C00000; color: #8B0000; }
 
@@ -111,8 +130,9 @@
 
     @media (max-width: 560px) {
       .grid-2 { grid-template-columns: 1fr; }
-      .body { padding: 24px 20px; }
+      .body   { padding: 24px 20px; }
       .stats-bar { grid-template-columns: 1fr; }
+      .header { padding: 28px 20px; }
     }
   </style>
 </head>
@@ -132,19 +152,29 @@
   </div>
 
   <div class="stats-bar">
-    <div class="stat"><div class="stat-num" id="stat-sent">0</div><div class="stat-lbl">Emails sent</div></div>
-    <div class="stat"><div class="stat-num" id="stat-dept">—</div><div class="stat-lbl">Department</div></div>
-    <div class="stat"><div class="stat-num" id="stat-time">—</div><div class="stat-lbl">Last sent</div></div>
+    <div class="stat">
+      <div class="stat-num" id="stat-sent">0</div>
+      <div class="stat-lbl">Emails sent</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-dept">—</div>
+      <div class="stat-lbl">Department</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-time">—</div>
+      <div class="stat-lbl">Last sent</div>
+    </div>
   </div>
 
   <div class="body">
 
+    <!-- Employee Info -->
     <div class="section">
       <div class="section-header">
         <div class="section-icon">👤</div>
         <span class="section-title">Employee Information</span>
       </div>
-      <div class="grid-2" style="margin-bottom:16px">
+      <div class="grid-2" style="margin-bottom:16px;">
         <div class="field">
           <label>Full Name *</label>
           <input type="text" id="name" placeholder="e.g. Jane Smith" oninput="updatePreview()">
@@ -171,7 +201,7 @@
         </div>
       </div>
 
-      <div class="field" style="margin-bottom:16px">
+      <div class="field" style="margin-bottom:16px;">
         <label>Department *</label>
         <div class="dept-grid" id="dept-btns">
           <button class="dept-btn" onclick="selectDept(this,'Engineering')">⚙️ Engineering</button>
@@ -195,12 +225,13 @@
       </div>
     </div>
 
+    <!-- Email Delivery -->
     <div class="section">
       <div class="section-header">
         <div class="section-icon">📧</div>
         <span class="section-title">Email Delivery</span>
       </div>
-      <div class="grid-2" style="margin-bottom:16px">
+      <div class="grid-2" style="margin-bottom:16px;">
         <div class="field">
           <label>Recipient Email *</label>
           <input type="email" id="email" placeholder="jane.smith@company.com" oninput="updatePreview()">
@@ -214,7 +245,6 @@
         <label>Personal Welcome Note (optional)</label>
         <input type="text" id="note" placeholder="e.g. We are so excited to have you join us!">
       </div>
-
       <div class="preview-box" id="preview-box">
         <b>Preview:</b> Sending onboarding email to <b id="prev-email">—</b>
         for <b id="prev-name">—</b> joining as <b id="prev-role">—</b>
@@ -222,6 +252,7 @@
       </div>
     </div>
 
+    <!-- Progress -->
     <div class="progress" id="progress">
       <div class="progress-steps">
         <div class="pstep" id="ps1">📄 Generating PDF</div>
@@ -230,10 +261,12 @@
       </div>
     </div>
 
+    <!-- Button -->
     <button class="send-btn" id="send-btn" onclick="sendOnboarding()">
-      🚀 Generate PDF & Send Onboarding Email
+      🚀 Generate PDF &amp; Send Onboarding Email
     </button>
 
+    <!-- Result -->
     <div class="result" id="result"></div>
 
     <div class="footer-note">
@@ -244,10 +277,11 @@
 </div>
 
 <script>
-  let selectedDept = '';
+  let selectedDept     = '';
   let selectedPriority = 'low';
-  let sentCount = 0;
+  let sentCount        = 0;
 
+  // Set today's date as default
   document.getElementById('start').value = new Date().toISOString().split('T')[0];
   selectPriority('low');
 
@@ -286,9 +320,9 @@
   function setStep(n) {
     ['ps1','ps2','ps3'].forEach((id, i) => {
       const el = document.getElementById(id);
-      if (i < n - 1)      el.className = 'pstep done';
-      else if (i === n-1) el.className = 'pstep active';
-      else                el.className = 'pstep';
+      if      (i < n - 1)  el.className = 'pstep done';
+      else if (i === n - 1) el.className = 'pstep active';
+      else                  el.className = 'pstep';
     });
   }
 
@@ -306,30 +340,31 @@
     const progress = document.getElementById('progress');
 
     if (!name || !role || !email || !selectedDept) {
-      result.className = 'result error';
+      result.className     = 'result error';
       result.style.display = 'block';
-      result.innerHTML = '⚠️ Please fill in <b>Name, Role, Department</b> and <b>Email</b> before sending.';
+      result.innerHTML     = '⚠️ Please fill in <b>Name, Role, Department</b> and <b>Email</b> before sending.';
       return;
     }
 
-    btn.disabled = true;
-    btn.textContent = '⏳ Processing...';
+    btn.disabled         = true;
+    btn.textContent      = '⏳ Processing...';
     progress.style.display = 'block';
-    result.style.display = 'none';
+    result.style.display   = 'none';
     setStep(1);
 
     await new Promise(r => setTimeout(r, 900));
     setStep(2);
 
     try {
-      const response = await fetch('http://localhost:5000/onboard', {
-        method: 'POST',
+      const response = await fetch('/onboard', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, role, department: selectedDept,
           email, manager, note,
           start_date: start,
-          location, emp_id: empid,
+          location,
+          emp_id:   empid,
           priority: selectedPriority
         })
       });
@@ -341,7 +376,7 @@
         sentCount++;
         document.getElementById('stat-sent').textContent = sentCount;
         document.getElementById('stat-time').textContent =
-          new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         result.className = 'result success';
         result.innerHTML = `✅ <b>Email delivered successfully!</b><br>
           Onboarding PDF sent to <b>${email}</b><br>
@@ -353,13 +388,12 @@
     } catch(e) {
       setStep(1);
       result.className = 'result error';
-      result.innerHTML = `❌ <b>Cannot connect to Flask server.</b><br>
-        Make sure it's running: <code>python generate_report.py</code>`;
+      result.innerHTML = `❌ <b>Cannot connect to server.</b><br>Make sure Flask is running.`;
     }
 
     result.style.display = 'block';
-    btn.disabled = false;
-    btn.innerHTML = '🚀 Generate PDF & Send Onboarding Email';
+    btn.disabled         = false;
+    btn.innerHTML        = '🚀 Generate PDF &amp; Send Onboarding Email';
   }
 
   document.addEventListener('keydown', e => {
