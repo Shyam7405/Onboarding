@@ -1,12 +1,8 @@
 import json
 import os
 import sys
-import smtplib
+import base64
 import threading
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -16,26 +12,30 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.enums import TA_CENTER
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import (
+    Mail, Attachment, FileContent, FileName, FileType, Disposition
+)
 
 app = Flask(__name__)
 CORS(app)
 
-# ── GMAIL CREDENTIALS (set as environment variables on Render) ──
-GMAIL_ADDRESS  = os.environ.get("GMAIL_ADDRESS", "your.email@gmail.com")
-GMAIL_APP_PASS = os.environ.get("GMAIL_APP_PASS", "abcd efgh ijkl mnop")
-# ───────────────────────────────────────────────────────────────
+# ── CREDENTIALS (set as environment variables on Render) ──
+GMAIL_ADDRESS    = os.environ.get("GMAIL_ADDRESS",    "your.email@gmail.com").strip()
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "").strip()
+# ──────────────────────────────────────────────────────────
 
 
 def generate_pdf(employee_data, output_path):
-    name       = employee_data.get("name", "Unknown")
-    role       = employee_data.get("role", "Unknown")
+    name       = employee_data.get("name",       "Unknown")
+    role       = employee_data.get("role",       "Unknown")
     department = employee_data.get("department", "Unknown")
-    manager    = employee_data.get("manager", "Your Manager")
+    manager    = employee_data.get("manager",    "Your Manager")
     start_date = employee_data.get("start_date", datetime.now().strftime("%B %d, %Y"))
-    note       = employee_data.get("note", "")
-    location   = employee_data.get("location", "Office")
-    emp_id     = employee_data.get("emp_id", f"EMP-{datetime.now().strftime('%Y%m%d')}")
-    priority   = employee_data.get("priority", "low")
+    note       = employee_data.get("note",       "")
+    location   = employee_data.get("location",   "Office")
+    emp_id     = employee_data.get("emp_id",     f"EMP-{datetime.now().strftime('%Y%m%d')}")
+    priority   = employee_data.get("priority",   "low")
     generated  = datetime.now().strftime("%B %d, %Y at %H:%M")
 
     priority_labels = {"low": "Standard", "mid": "Urgent", "high": "Critical"}
@@ -67,6 +67,7 @@ def generate_pdf(employee_data, output_path):
 
     story = []
 
+    # Header
     story.append(Spacer(1, 0.1*inch))
     story.append(Paragraph("Welcome to the Team!", title_style))
     story.append(Paragraph("Employee Onboarding Summary Report", sub_style))
@@ -74,6 +75,7 @@ def generate_pdf(employee_data, output_path):
     story.append(HRFlowable(width="100%", thickness=3, color=colors.HexColor("#1F4E79")))
     story.append(Spacer(1, 0.2*inch))
 
+    # Employee Details
     story.append(Paragraph("Employee Information", section_style))
     detail_data = [
         ["Full Name",     name],
@@ -104,6 +106,7 @@ def generate_pdf(employee_data, output_path):
     story.append(detail_table)
     story.append(Spacer(1, 0.2*inch))
 
+    # Welcome Message
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("Welcome Message", section_style))
     story.append(Paragraph(f"Dear {name},", body_style))
@@ -119,6 +122,7 @@ def generate_pdf(employee_data, output_path):
         story.append(Paragraph(f'Personal note from HR: "{note}"', note_style))
     story.append(Spacer(1, 0.2*inch))
 
+    # Checklist
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("First Week Checklist", section_style))
     for item in [
@@ -136,6 +140,7 @@ def generate_pdf(employee_data, output_path):
         story.append(Paragraph(f"  [ ]   {item}", check_style))
     story.append(Spacer(1, 0.2*inch))
 
+    # Key Contacts
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("Key Contacts", section_style))
     contacts_table = Table([
@@ -160,6 +165,7 @@ def generate_pdf(employee_data, output_path):
     story.append(contacts_table)
     story.append(Spacer(1, 0.2*inch))
 
+    # Policies
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#DDDDDD")))
     story.append(Paragraph("Important Policies to Review", section_style))
     for policy in [
@@ -174,34 +180,28 @@ def generate_pdf(employee_data, output_path):
         story.append(Spacer(1, 0.03*inch))
     story.append(Spacer(1, 0.25*inch))
 
+    # Footer
     story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor("#1F4E79")))
     story.append(Spacer(1, 0.1*inch))
     story.append(Paragraph(
         f"Generated automatically by Employee Onboarding Automation System  |  {generated}",
         footer_style))
-    story.append(Paragraph("Powered by Python - Flask - ReportLab - Azure DevOps", footer_style))
+    story.append(Paragraph("Powered by Python - Flask - ReportLab - SendGrid", footer_style))
 
     doc.build(story)
     return output_path
 
 
 def send_email(to_email, employee_data, pdf_path):
-    import base64
-    from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import (
-        Mail, Attachment, FileContent, FileName,
-        FileType, Disposition
-    )
-
     name       = employee_data.get("name")
     role       = employee_data.get("role")
     department = employee_data.get("department")
-    manager    = employee_data.get("manager", "Your Manager")
-    note       = employee_data.get("note", "")
+    manager    = employee_data.get("manager",    "Your Manager")
+    note       = employee_data.get("note",       "")
     start_date = employee_data.get("start_date", "Your start date")
-    location   = employee_data.get("location", "Office")
-    emp_id     = employee_data.get("emp_id", "TBD")
-    priority   = employee_data.get("priority", "low")
+    location   = employee_data.get("location",   "Office")
+    emp_id     = employee_data.get("emp_id",     "TBD")
+    priority   = employee_data.get("priority",   "low")
     priority_labels = {"low": "Standard", "mid": "Urgent", "high": "Critical"}
     p_label = priority_labels.get(priority, "Standard")
 
@@ -263,26 +263,44 @@ def send_email(to_email, employee_data, pdf_path):
       <tr><td style="padding:9px 0;border-bottom:1px solid #F5F5F5;">✅&nbsp;&nbsp;Join department meeting and introduce yourself</td></tr>
       <tr><td style="padding:9px 0;">✅&nbsp;&nbsp;Complete mandatory compliance and security training</td></tr>
     </table>
+    <h3 style="color:#1F4E79;font-size:15px;margin:24px 0 14px;">Key Contacts</h3>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <tr style="background:#1F4E79;">
+        <td style="padding:10px 12px;color:white;font-weight:700;">Team</td>
+        <td style="padding:10px 12px;color:white;font-weight:700;">Contact</td>
+        <td style="padding:10px 12px;color:white;font-weight:700;">For</td>
+      </tr>
+      <tr style="background:#F8FAFC;"><td style="padding:9px 12px;color:#555;">HR Team</td><td style="padding:9px 12px;color:#2E75B6;">hr@company.com</td><td style="padding:9px 12px;color:#555;">Docs, payroll</td></tr>
+      <tr><td style="padding:9px 12px;color:#555;">IT Support</td><td style="padding:9px 12px;color:#2E75B6;">it@company.com</td><td style="padding:9px 12px;color:#555;">Laptop, access</td></tr>
+      <tr style="background:#F8FAFC;"><td style="padding:9px 12px;color:#555;">Your Manager</td><td style="padding:9px 12px;color:#333;font-weight:700;">{manager}</td><td style="padding:9px 12px;color:#555;">Day-to-day</td></tr>
+      <tr><td style="padding:9px 12px;color:#555;">Finance</td><td style="padding:9px 12px;color:#2E75B6;">finance@company.com</td><td style="padding:9px 12px;color:#555;">Salary, expenses</td></tr>
+    </table>
     <div style="background:#1F4E79;border-radius:10px;padding:22px 26px;margin:28px 0;text-align:center;">
       <p style="color:#B3D1F0;margin:0 0 8px;font-size:13px;">Your personalised onboarding report is attached as a PDF</p>
       <p style="color:white;margin:0;font-size:15px;font-weight:700;">Open the attachment for your complete onboarding summary</p>
     </div>
+    <p style="font-size:15px;color:#555;line-height:1.8;">
+      If you have any questions before your start date, reach out to
+      <a href="mailto:hr@company.com" style="color:#2E75B6;">hr@company.com</a>.
+      We are here to make your transition as smooth as possible.
+    </p>
     <p style="font-size:15px;color:#333;margin-top:24px;">
       Warm regards,<br>
-      <b style="color:#1F4E79;">HR Team</b>
+      <b style="color:#1F4E79;font-size:16px;">HR Team</b><br>
+      <span style="font-size:13px;color:#888;">Employee Onboarding Automation System</span>
     </p>
   </div>
   <div style="background:#F8FAFC;padding:20px 40px;border-top:1px solid #EEE;text-align:center;">
-    <p style="font-size:12px;color:#AAA;margin:0;">
-      Generated by Employee Onboarding Automation System<br>
-      Powered by Python · Flask · ReportLab · SendGrid
+    <p style="font-size:12px;color:#AAA;margin:0;line-height:1.8;">
+      Generated automatically by Employee Onboarding Automation System<br>
+      Powered by Python &middot; Flask &middot; ReportLab &middot; SendGrid
     </p>
   </div>
 </div>
 </body></html>
 """
 
-    # Read and encode PDF
+    # Read and encode PDF as base64
     with open(pdf_path, "rb") as f:
         pdf_data = base64.b64encode(f.read()).decode()
 
@@ -301,8 +319,9 @@ def send_email(to_email, employee_data, pdf_path):
     )
     message.attachment = attachment
 
-    sg = SendGridAPIClient(os.environ.get("SENDGRID_API_KEY"))
+    sg = SendGridAPIClient(SENDGRID_API_KEY)
     sg.send(message)
+    print(f"Email sent to {to_email}")
 
 
 def load_employee_json(filepath):
@@ -333,11 +352,9 @@ def onboard():
     except Exception as e:
         return jsonify({"error": f"PDF generation failed: {str(e)}"}), 500
 
-    # Send email in background so worker doesn't timeout
     def send_in_background():
         try:
             send_email(data["email"], data, pdf_path)
-            print(f"Email sent to {data['email']}")
         except Exception as e:
             print(f"Email error: {e}")
 
